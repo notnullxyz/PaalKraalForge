@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PaalKraalForge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              sand: {
+                50: '#fdfbf7',
+                100: '#f7f3e8',
+                200: '#efe5cd',
+                300: '#e5d0a6',
+                400: '#dab378',
+                500: '#cc9653',
+                600: '#bf7d42',
+                700: '#9f6036',
+                800: '#844e32',
+                900: '#6b412d',
+              },
+              rust: {
+                500: '#8B4513',
+                600: '#A0522D',
+              },
+              olive: {
+                500: '#556B2F',
+                600: '#6B8E23',
+              }
+            },
+            fontFamily: {
+              serif: ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #f7f3e8; /* sand-100 */
+        color: #6b412d; /* sand-900 */
+      }
+      /* Custom scrollbar for farm aesthetic */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #efe5cd; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cc9653; 
+        border-radius: 4px;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
