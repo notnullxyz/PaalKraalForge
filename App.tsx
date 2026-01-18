@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, RefreshCcw, Undo2, Plus, ArrowRight } from 'lucide-react';
+import { Settings, RefreshCcw, Undo2, Plus, ArrowRight, CornerUpLeft, CornerUpRight, MoveUp } from 'lucide-react';
 import { AppSettings, FenceSegment, PoleLength, SegmentType } from './types';
 import { DEFAULT_SETTINGS, POLE_OPTIONS, GATE_WIDTH } from './constants';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -10,6 +10,7 @@ function App() {
   const [segments, setSegments] = useState<FenceSegment[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [nextTurn, setNextTurn] = useState<number>(0);
 
   // Core Logic: Adding a segment
   const addSegment = (length: PoleLength | 'GATE') => {
@@ -19,9 +20,13 @@ function App() {
       rawLength: length === 'GATE' ? GATE_WIDTH : length,
       // For standard poles, effective length is raw - overlap. For gate, it's fixed width.
       effectiveLength: length === 'GATE' ? GATE_WIDTH : (length - settings.overlap),
+      turnAngle: nextTurn,
     };
 
     setSegments([...segments, newSegment]);
+    // Optional: Reset turn to straight after adding? 
+    // setNextTurn(0); 
+    // Keeping it sticky might be better for drawing regular shapes (e.g. octagon)
   };
 
   const removeLastSegment = () => {
@@ -31,6 +36,7 @@ function App() {
   const resetForge = () => {
     if (window.confirm("Are you sure you want to clear your design?")) {
       setSegments([]);
+      setNextTurn(0);
     }
   };
 
@@ -78,46 +84,77 @@ function App() {
       <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full space-y-8">
         
         {/* Controls Bar */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-sand-200 flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex flex-wrap gap-2">
-            <span className="text-sm font-bold text-sand-500 uppercase tracking-wider py-2 mr-2 self-center">Add Section:</span>
-            
-            {POLE_OPTIONS.map((len) => (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-sand-200 flex flex-col gap-6">
+          
+          {/* Top Row: Orientation Controls */}
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-sand-100 pb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-olive-600 uppercase tracking-wider">Next Angle:</span>
+              <div className="flex bg-sand-100 p-1 rounded-lg">
+                {[
+                  { label: '-90°', val: -90, icon: <CornerUpLeft className="w-4 h-4" /> },
+                  { label: '-45°', val: -45, icon: <CornerUpLeft className="w-4 h-4 rotate-45" /> },
+                  { label: '0°', val: 0, icon: <MoveUp className="w-4 h-4" /> },
+                  { label: '+45°', val: 45, icon: <CornerUpRight className="w-4 h-4 -rotate-45" /> },
+                  { label: '+90°', val: 90, icon: <CornerUpRight className="w-4 h-4" /> },
+                ].map((opt) => (
+                  <button
+                    key={opt.val}
+                    onClick={() => setNextTurn(opt.val)}
+                    className={`flex items-center gap-1 px-3 py-2 rounded-md text-sm transition-all ${
+                      nextTurn === opt.val 
+                        ? 'bg-rust-600 text-white shadow-sm' 
+                        : 'text-sand-600 hover:bg-sand-200 hover:text-sand-900'
+                    }`}
+                    title={`Turn ${opt.val}°`}
+                  >
+                    {opt.icon}
+                    <span className="hidden sm:inline">{Math.abs(opt.val)}°</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+               <button
+                onClick={removeLastSegment}
+                disabled={segments.length === 0}
+                className="p-2 text-sand-600 hover:text-rust-600 hover:bg-sand-100 rounded disabled:opacity-30 disabled:cursor-not-allowed border border-transparent hover:border-sand-300"
+                title="Undo Last"
+              >
+                <Undo2 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={resetForge}
+                disabled={segments.length === 0}
+                className="p-2 text-sand-600 hover:text-red-600 hover:bg-sand-100 rounded disabled:opacity-30 disabled:cursor-not-allowed border border-transparent hover:border-sand-300"
+                title="Reset All"
+              >
+                <RefreshCcw className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom Row: Add Poles */}
+          <div className="flex flex-wrap gap-3 items-center">
+             <span className="text-xs font-bold text-olive-600 uppercase tracking-wider mr-2">Add Section:</span>
+             {POLE_OPTIONS.map((len) => (
               <button
                 key={len}
                 onClick={() => addSegment(len as PoleLength)}
-                className="flex items-center gap-2 px-4 py-2 bg-olive-600 hover:bg-olive-500 text-white rounded shadow-sm active:transform active:scale-95 transition-all"
+                className="flex items-center gap-2 px-5 py-3 bg-olive-600 hover:bg-olive-500 text-white rounded-lg shadow-sm active:transform active:scale-95 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                {len}m Pole
+                <span className="font-bold">{len}m</span>
               </button>
             ))}
             
             <button
               onClick={() => addSegment('GATE')}
-              className="flex items-center gap-2 px-4 py-2 bg-rust-600 hover:bg-rust-500 text-white rounded shadow-sm active:transform active:scale-95 transition-all ml-2"
+              className="flex items-center gap-2 px-5 py-3 bg-rust-600 hover:bg-rust-500 text-white rounded-lg shadow-sm active:transform active:scale-95 transition-all ml-2"
             >
               <div className="w-4 h-4 border-2 border-white/80 rounded-sm"></div>
-              Gate (1m)
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={removeLastSegment}
-              disabled={segments.length === 0}
-              className="p-2 text-sand-600 hover:text-rust-600 hover:bg-sand-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Undo Last"
-            >
-              <Undo2 className="w-6 h-6" />
-            </button>
-            <button
-              onClick={resetForge}
-              disabled={segments.length === 0}
-              className="p-2 text-sand-600 hover:text-red-600 hover:bg-sand-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Reset All"
-            >
-              <RefreshCcw className="w-6 h-6" />
+              <span className="font-bold">Gate (1m)</span>
             </button>
           </div>
         </div>
@@ -131,16 +168,16 @@ function App() {
         {/* Instructions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-sand-700">
             <div className="bg-sand-100 p-4 rounded-lg border border-sand-200">
-                <h4 className="font-bold text-olive-600 mb-2">1. Layout</h4>
-                <p>Click the pole buttons to add sections to your fence line. The visualizer shows a simplified schematic view.</p>
+                <h4 className="font-bold text-olive-600 mb-2">1. Orientation</h4>
+                <p>Select your turn angle (Straight, 45°, 90°) <strong>before</strong> adding a pole to shape your kraal. Negative angles turn left, positive turn right.</p>
             </div>
             <div className="bg-sand-100 p-4 rounded-lg border border-sand-200">
-                <h4 className="font-bold text-olive-600 mb-2">2. Tuning</h4>
-                <p>Use the settings menu (top right) to adjust fence height, rail spacing, overlap allowance, and material costs.</p>
+                <h4 className="font-bold text-olive-600 mb-2">2. Structure</h4>
+                <p>Add poles and gates. The design is now 2D. If the loop doesn't close perfectly, the "Gap" will be shown in red.</p>
             </div>
             <div className="bg-sand-100 p-4 rounded-lg border border-sand-200">
-                <h4 className="font-bold text-olive-600 mb-2">3. Logic & Shapes</h4>
-                <p>The material calculation is based on total perimeter. Corners are treated as standard posts, so a linear design accurately estimates materials for L, U, or square shapes.</p>
+                <h4 className="font-bold text-olive-600 mb-2">3. Vertical Layout</h4>
+                <p>The elevation view (below the map) shows the vertical construction details, which remain constant regardless of the 2D shape.</p>
             </div>
         </div>
 

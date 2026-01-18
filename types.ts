@@ -10,6 +10,7 @@ export interface FenceSegment {
   type: SegmentType;
   rawLength: number; // The length of the pole bought
   effectiveLength: number; // The length added to the perimeter (raw - overlap)
+  turnAngle: number; // Degrees of turn relative to previous segment (negative = left, positive = right)
 }
 
 export interface AppSettings {
