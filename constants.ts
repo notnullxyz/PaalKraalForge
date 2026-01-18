@@ -4,7 +4,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fenceHeight: 1.2,
   railSpacing: 0.3,
   overlap: 0.15,
-  isClosedLoop: true,
   poleDiameter: 100,
   postDiameter: 150,
   pricePost: 150,

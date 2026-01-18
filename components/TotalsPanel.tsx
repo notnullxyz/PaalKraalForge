@@ -15,8 +15,13 @@ export const TotalsPanel: React.FC<TotalsPanelProps> = ({ segments, settings }) 
     let pole36 = 0;
     let gates = 0;
     
-    // Calculate segments
+    // Geometry check for Closed Loop (Auto-detect)
+    let currentX = 0;
+    let currentY = 0;
+    let currentHeading = 0;
+    
     segments.forEach(seg => {
+      // Length Counts
       totalLength += seg.effectiveLength;
       if (seg.type === SegmentType.GATE) {
         gates++;
@@ -25,23 +30,27 @@ export const TotalsPanel: React.FC<TotalsPanelProps> = ({ segments, settings }) 
         else if (seg.rawLength === 2.4) pole24++;
         else if (seg.rawLength === 3.6) pole36++;
       }
+
+      // Geometry Calc
+      currentHeading += seg.turnAngle;
+      const rad = (currentHeading * Math.PI) / 180;
+      currentX += seg.effectiveLength * Math.cos(rad);
+      currentY += seg.effectiveLength * Math.sin(rad);
     });
+
+    // Determine if closed (Start 0,0 vs End X,Y)
+    // Distance threshold: 25cm (allows for slight misalignment in large manual loops)
+    const distanceToStart = Math.sqrt(currentX * currentX + currentY * currentY);
+    const isClosedLoop = segments.length > 2 && distanceToStart < 0.25;
 
     // Calculate Posts
     // If closed loop, posts = segments. If open line, posts = segments + 1
     const totalPosts = segments.length > 0 
-      ? segments.length + (settings.isClosedLoop ? 0 : 1)
+      ? segments.length + (isClosedLoop ? 0 : 1)
       : 0;
 
     // Calculate Rails (Split Poles)
-    // Formula: (Height - 0.1m ground gap) / Spacing
-    // Floor + 1 gives the count.
     const railsPerSection = Math.max(0, Math.floor((settings.fenceHeight - 0.1) / settings.railSpacing) + 1);
-    
-    // We assume the poles bought (1.8, 2.4, 3.6) are used AS rails. 
-    // The prompt implies we buy standard poles and use them.
-    // So the counts above (pole18, etc) are for ONE rail. 
-    // We need to multiply by number of rails height-wise.
     
     const totalPole18 = pole18 * railsPerSection;
     const totalPole24 = pole24 * railsPerSection;
@@ -65,7 +74,8 @@ export const TotalsPanel: React.FC<TotalsPanelProps> = ({ segments, settings }) 
       totalPole36,
       gates,
       totalCost,
-      postHeight: settings.fenceHeight * 1.25
+      postHeight: settings.fenceHeight * 1.25,
+      isClosedLoop
     };
   };
 
@@ -73,8 +83,13 @@ export const TotalsPanel: React.FC<TotalsPanelProps> = ({ segments, settings }) 
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-sand-200 overflow-hidden">
-      <div className="bg-sand-200 p-4 border-b border-sand-300">
+      <div className="bg-sand-200 p-4 border-b border-sand-300 flex justify-between items-center">
         <h3 className="text-lg font-serif font-bold text-sand-900">Material Bill</h3>
+        {stats.isClosedLoop && (
+          <span className="text-xs font-bold text-white bg-olive-600 px-2 py-1 rounded-full flex items-center gap-1">
+             ✓ Loop Closed
+          </span>
+        )}
       </div>
       
       <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -146,7 +161,7 @@ export const TotalsPanel: React.FC<TotalsPanelProps> = ({ segments, settings }) 
             {settings.currencySymbol}{stats.totalCost.toLocaleString()}
           </div>
            <p className="text-[10px] text-sand-500 leading-tight">
-             Includes posts, rails, and gates based on current unit settings.
+             Includes posts, rails, and gates.
            </p>
         </div>
 

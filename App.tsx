@@ -14,19 +14,19 @@ function App() {
 
   // Core Logic: Adding a segment
   const addSegment = (length: PoleLength | 'GATE') => {
+    // Force first segment to be straight (0 degrees) to establish orientation
+    const effectiveTurn = segments.length === 0 ? 0 : nextTurn;
+
     const newSegment: FenceSegment = {
       id: Math.random().toString(36).substr(2, 9),
       type: length === 'GATE' ? SegmentType.GATE : SegmentType.STANDARD,
       rawLength: length === 'GATE' ? GATE_WIDTH : length,
-      // For standard poles, effective length is raw - overlap. For gate, it's fixed width.
       effectiveLength: length === 'GATE' ? GATE_WIDTH : (length - settings.overlap),
-      turnAngle: nextTurn,
+      turnAngle: effectiveTurn,
     };
 
     setSegments([...segments, newSegment]);
-    // Optional: Reset turn to straight after adding? 
-    // setNextTurn(0); 
-    // Keeping it sticky might be better for drawing regular shapes (e.g. octagon)
+    // Optionally reset or keep turn. Keeping allows repeating shapes.
   };
 
   const removeLastSegment = () => {
@@ -40,10 +40,8 @@ function App() {
     }
   };
 
-  // Re-calculate effective lengths if overlap setting changes
   const updateSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
-    // If overlap changed, update existing segments
     if (newSettings.overlap !== settings.overlap) {
        setSegments(prev => prev.map(seg => ({
          ...seg,
@@ -88,28 +86,27 @@ function App() {
           
           {/* Top Row: Orientation Controls */}
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-sand-100 pb-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-olive-600 uppercase tracking-wider">Next Angle:</span>
-              <div className="flex bg-sand-100 p-1 rounded-lg">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <span className="text-xs font-bold text-olive-600 uppercase tracking-wider">Turn Direction:</span>
+              <div className="flex flex-wrap justify-center gap-2 bg-sand-100 p-2 rounded-lg">
                 {[
-                  { label: '-90°', val: -90, icon: <CornerUpLeft className="w-4 h-4" /> },
-                  { label: '-45°', val: -45, icon: <CornerUpLeft className="w-4 h-4 rotate-45" /> },
-                  { label: '0°', val: 0, icon: <MoveUp className="w-4 h-4" /> },
-                  { label: '+45°', val: 45, icon: <CornerUpRight className="w-4 h-4 -rotate-45" /> },
-                  { label: '+90°', val: 90, icon: <CornerUpRight className="w-4 h-4" /> },
+                  { label: 'Left 90°', val: -90, icon: <CornerUpLeft className="w-4 h-4" /> },
+                  { label: 'Left 45°', val: -45, icon: <CornerUpLeft className="w-4 h-4 rotate-45" /> },
+                  { label: 'Straight', val: 0, icon: <MoveUp className="w-4 h-4" /> },
+                  { label: 'Right 45°', val: 45, icon: <CornerUpRight className="w-4 h-4 -rotate-45" /> },
+                  { label: 'Right 90°', val: 90, icon: <CornerUpRight className="w-4 h-4" /> },
                 ].map((opt) => (
                   <button
                     key={opt.val}
                     onClick={() => setNextTurn(opt.val)}
-                    className={`flex items-center gap-1 px-3 py-2 rounded-md text-sm transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all ${
                       nextTurn === opt.val 
                         ? 'bg-rust-600 text-white shadow-sm' 
                         : 'text-sand-600 hover:bg-sand-200 hover:text-sand-900'
                     }`}
-                    title={`Turn ${opt.val}°`}
                   >
                     {opt.icon}
-                    <span className="hidden sm:inline">{Math.abs(opt.val)}°</span>
+                    <span className="font-medium">{opt.label}</span>
                   </button>
                 ))}
               </div>
@@ -169,15 +166,15 @@ function App() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-sand-700">
             <div className="bg-sand-100 p-4 rounded-lg border border-sand-200">
                 <h4 className="font-bold text-olive-600 mb-2">1. Orientation</h4>
-                <p>Select your turn angle (Straight, 45°, 90°) <strong>before</strong> adding a pole to shape your kraal. Negative angles turn left, positive turn right.</p>
+                <p>Select your turn direction <strong>before</strong> adding a pole. The First pole is always straight.</p>
             </div>
             <div className="bg-sand-100 p-4 rounded-lg border border-sand-200">
-                <h4 className="font-bold text-olive-600 mb-2">2. Structure</h4>
-                <p>Add poles and gates. The design is now 2D. If the loop doesn't close perfectly, the "Gap" will be shown in red.</p>
+                <h4 className="font-bold text-olive-600 mb-2">2. Free Drawing</h4>
+                <p>Draw freely. The loop doesn't have to be perfectly closed, but if your end points meet, we'll mark it as a closed structure.</p>
             </div>
             <div className="bg-sand-100 p-4 rounded-lg border border-sand-200">
-                <h4 className="font-bold text-olive-600 mb-2">3. Vertical Layout</h4>
-                <p>The elevation view (below the map) shows the vertical construction details, which remain constant regardless of the 2D shape.</p>
+                <h4 className="font-bold text-olive-600 mb-2">3. Auto-Close</h4>
+                <p>When the end of the fence gets close to the start (within 25cm), it will snap and count as a single closed loop for material calculation.</p>
             </div>
         </div>
 

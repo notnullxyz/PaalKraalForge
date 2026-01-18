@@ -26,8 +26,7 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
     totalLength, 
     postHeight, 
     numberOfRails,
-    gapDistance,
-    showGap
+    isClosed
   } = useMemo(() => {
     let currentX = 0;
     let currentY = 0;
@@ -65,18 +64,12 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
       };
     });
 
-    // Check Gap if closed loop is requested and we have segments
-    let gapDistance = 0;
-    let showGap = false;
-    if (segments.length > 0) {
-        // Distance from Last End to Origin (0,0)
+    // Auto-detect closed loop (Threshold 0.25m)
+    let isClosed = false;
+    if (segments.length > 2) {
         const lastEnd = calculatedSegments[calculatedSegments.length - 1].end;
-        gapDistance = Math.sqrt(Math.pow(lastEnd.x, 2) + Math.pow(lastEnd.y, 2));
-        
-        // Show gap if > 10cm
-        if (settings.isClosedLoop && gapDistance > 0.1) {
-            showGap = true;
-        }
+        const dist = Math.sqrt(Math.pow(lastEnd.x, 2) + Math.pow(lastEnd.y, 2));
+        if (dist < 0.25) isClosed = true;
     }
 
     const totalLength = segments.reduce((acc, s) => acc + s.effectiveLength, 0);
@@ -89,8 +82,7 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
       totalLength, 
       postHeight, 
       numberOfRails,
-      gapDistance,
-      showGap
+      isClosed
     };
   }, [segments, settings]);
 
@@ -100,7 +92,7 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
   
-  // Ensure a minimum view size so it doesn't look zoomed in on a single dot
+  // Ensure a minimum view size
   const viewWidthMeters = Math.max(15, contentWidth + paddingMeters * 2);
   const viewHeightMeters = Math.max(10, contentHeight + paddingMeters * 2);
 
@@ -113,26 +105,18 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
 
   const pixelsPerMeter = 40; // Base scaling for rendering
 
-  // For elevation view (bottom part), we use a simpler fixed coordinate system
-  // We need to fit the elevation view into the SVG. 
-  // Let's separate Top View and Elevation View visually by enough space.
-  
-  // We'll define a fixed height for Top View and Elevation View
-  const TOP_VIEW_HEIGHT = 400;
-  const ELEVATION_HEIGHT = 200;
-  
   // Colors
   const WOOD_COLOR = "#8B4513"; 
   const WOOD_LIGHT = "#DEB887"; 
   const GATE_COLOR = "#2F4F4F"; 
   const POST_COLOR = "#463020"; 
-  const GAP_COLOR = "#DC2626"; // Red
+  const CLOSED_COLOR = "#65a30d"; // Lime-600
 
   if (segments.length === 0) {
     return (
       <div className="w-full h-96 flex flex-col items-center justify-center bg-sand-100 rounded-xl border-2 border-dashed border-sand-300 text-sand-500">
         <p className="text-xl font-serif">The kraal is empty.</p>
-        <p className="text-sm">Select an angle and add poles to start drawing.</p>
+        <p className="text-sm">Select a direction and add poles to start drawing.</p>
       </div>
     );
   }
@@ -144,19 +128,14 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
         {/* --- TOP VIEW CONTAINER --- */}
         <div className="h-[400px] w-full bg-sand-50/50 border-b border-sand-200 relative overflow-hidden cursor-move">
            <div className="absolute top-2 left-4 text-xs font-bold text-sand-500 bg-white/80 px-2 py-1 rounded shadow-sm">TOP VIEW (2D MAP)</div>
-           {showGap && (
-               <div className="absolute top-2 right-4 text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded border border-red-200 shadow-sm flex items-center gap-2 animate-pulse">
-                   <span>⚠️ UNMATCHED GAP: {gapDistance.toFixed(2)}m</span>
-               </div>
-           )}
-
+           
            <svg 
              width="100%" 
              height="100%"
              viewBox={`${viewBoxX} ${viewBoxY} ${viewWidthMeters} ${viewHeightMeters}`}
              preserveAspectRatio="xMidYMid meet"
            >
-              {/* Grid Lines (Optional background texture) */}
+              {/* Grid Lines */}
               <defs>
                  <pattern id="grid" width="5" height="5" patternUnits="userSpaceOnUse">
                    <path d="M 5 0 L 0 0 0 5" fill="none" stroke="#e5d0a6" strokeWidth="0.05"/>
@@ -165,12 +144,11 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
               <rect x={viewBoxX} y={viewBoxY} width={viewWidthMeters} height={viewHeightMeters} fill="url(#grid)" />
               
               {/* Origin Marker */}
-              <circle cx={0} cy={0} r={0.2} fill="#e5d0a6" opacity={0.5} />
+              <circle cx={0} cy={0} r={0.3} fill={isClosed ? CLOSED_COLOR : "#e5d0a6"} opacity={isClosed ? 0.5 : 0.5} />
 
               {/* The Fence Lines */}
               {visualSegments.map((seg) => (
                 <g key={`top-${seg.id}`}>
-                    {/* The Rail Line */}
                     <line 
                       x1={seg.start.x} 
                       y1={seg.start.y} 
@@ -181,7 +159,7 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
                       strokeLinecap="round"
                     />
                     
-                    {/* The Post (Start) */}
+                    {/* The Post (Start of segment) */}
                     <circle 
                         cx={seg.start.x} 
                         cy={seg.start.y} 
@@ -198,7 +176,7 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
                         fill="#6b412d"
                         fontSize={0.25}
                         fontWeight="bold"
-                        dy={-0.3} // Offset text slightly
+                        dy={-0.3}
                     >
                         {seg.type === SegmentType.GATE ? 'G' : `${seg.rawLength}`}
                     </text>
@@ -209,24 +187,9 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
                <circle 
                   cx={visualSegments[visualSegments.length-1].end.x} 
                   cy={visualSegments[visualSegments.length-1].end.y} 
-                  r={0.12} 
-                  fill={POST_COLOR} 
+                  r={isClosed ? 0.2 : 0.12} 
+                  fill={isClosed ? CLOSED_COLOR : POST_COLOR} 
               />
-
-              {/* Unmatched Gap Line */}
-              {showGap && (
-                <g>
-                    <line 
-                        x1={visualSegments[visualSegments.length-1].end.x}
-                        y1={visualSegments[visualSegments.length-1].end.y}
-                        x2={0}
-                        y2={0}
-                        stroke={GAP_COLOR}
-                        strokeWidth={0.08}
-                        strokeDasharray="0.2, 0.2"
-                    />
-                </g>
-              )}
 
            </svg>
         </div>
@@ -237,7 +200,7 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
              <svg 
                width={Math.max(800, totalLength * pixelsPerMeter + 100)} 
                height="100%"
-               viewBox={`0 0 ${Math.max(20, totalLength + 4)} 5`} // Abstract meter-based viewbox for Y
+               viewBox={`0 0 ${Math.max(20, totalLength + 4)} 5`} 
                preserveAspectRatio="none" 
                className="min-w-full"
             >
@@ -259,10 +222,9 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
                                     x={startX - 0.075} // Half width of 150mm post
                                     y={4 - settings.fenceHeight} // Top of fence
                                     width={0.15}
-                                    height={postHeight} // 1.25 height
+                                    height={postHeight} 
                                     fill={POST_COLOR}
                                 />
-                                
                                 {/* Rails */}
                                 {seg.type === SegmentType.STANDARD ? (
                                     Array.from({ length: numberOfRails }).map((_, rIndex) => {
@@ -271,9 +233,9 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
                                             <rect 
                                                 key={`r-${rIndex}`}
                                                 x={startX}
-                                                y={4 - h - 0.1} // Ground(4) - height - thickness
+                                                y={4 - h - 0.1} 
                                                 width={seg.effectiveLength}
-                                                height={0.1} // 100mm pole
+                                                height={0.1} 
                                                 fill={WOOD_LIGHT}
                                                 stroke={WOOD_COLOR}
                                                 strokeWidth={0.01}
@@ -281,7 +243,6 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
                                         )
                                     })
                                 ) : (
-                                    // Gate
                                     <g>
                                         <rect 
                                             x={startX + 0.05}
@@ -313,7 +274,7 @@ export const FenceCanvas: React.FC<FenceCanvasProps> = ({ segments, settings }) 
                     y={4 - settings.fenceHeight}
                     width={0.15}
                     height={postHeight}
-                    fill={POST_COLOR}
+                    fill={isClosed ? CLOSED_COLOR : POST_COLOR} // Green post if closed
                 />
             </svg>
         </div>

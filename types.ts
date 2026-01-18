@@ -17,7 +17,6 @@ export interface AppSettings {
   fenceHeight: number; // Meters
   railSpacing: number; // Meters (vertical gap between poles)
   overlap: number; // Meters (0.15 default)
-  isClosedLoop: boolean; // Does the fence connect back to start?
   poleDiameter: number; // mm (visual only)
   postDiameter: number; // mm (visual only)
   
